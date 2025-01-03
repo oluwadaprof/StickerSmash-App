@@ -1,6 +1,6 @@
 import Button from "@/components/button";
 import ImageViewer from "@/components/ImageViewer";
-import { View, StyleSheet } from "react-native";
+import { View, StyleSheet, Platform } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { useEffect, useRef, useState } from "react";
 import IconButton from "@/components/iconButton";
@@ -10,6 +10,7 @@ import EmojiList from "@/components/emojiList";
 import EmojiSticker from "@/components/emojiSticker";
 import * as MediaLibrary from "expo-media-library";
 import { captureRef } from "react-native-view-shot";
+import DomToImage from "dom-to-image";
 
 const PlaceholderImage = require("../../assets/images/background-image.png");
 
@@ -52,22 +53,41 @@ export default function Index() {
   };
   const onAddSticker = () => {
     setIsModalVisible(true);
+    console.log("Add Sticker button clicked");
   };
 
   const onSaveImageAsync = async () => {
-    try {
-      const localUri = await captureRef(imageRef, {
-        height: 440,
-        quality: 1,
-      });
+    console.log('clicked add button')
+    if (Platform.OS === "web") {
+      try {
+        // @ts-ignore 
+        const dataUrl = await DomToImage.toJpeg(imageRef.current, {
+          quality: 0.95,
+          width: 320,
+          height: 440,
+        });
 
-      await MediaLibrary.saveToLibraryAsync(localUri);
-      if (localUri) {
-        alert("Saved!");
+        let link = document.createElement("a");
+        link.download = "sticker-smash.jpeg";
+        link.href = dataUrl;
+        link.click();
+      } catch (e) {
+        console.log(e);
       }
-      return localUri;
-    } catch (e) {
-      console.log(e);
+    } else {
+      try {
+        const localUri = await captureRef(imageRef, {
+          height: 440,
+          quality: 1,
+        });
+
+        await MediaLibrary.saveToLibraryAsync(localUri);
+        if (localUri) {
+          alert("Saved!");
+        }
+      } catch (e) {
+        console.log(e);
+      }
     }
   };
 
