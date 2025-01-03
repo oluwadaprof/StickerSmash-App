@@ -2,17 +2,33 @@ import Button from "@/components/button";
 import ImageViewer from "@/components/ImageViewer";
 import { View, StyleSheet } from "react-native";
 import * as ImagePicker from "expo-image-picker";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import IconButton from "@/components/iconButton";
 import CircleButton from "@/components/circleButton";
+import EmojiPicker from "@/components/emojiPicker";
+import EmojiList from "@/components/emojiList";
+import EmojiSticker from "@/components/emojiSticker";
+import * as MediaLibrary from "expo-media-library";
+import { captureRef } from "react-native-view-shot";
 
 const PlaceholderImage = require("../../assets/images/background-image.png");
 
 export default function Index() {
+  const imageRef = useRef(null);
+  const [permissionResponse, requestPermissionResponse] =
+    MediaLibrary.usePermissions();
   const [selectedImage, setSelectedImage] = useState<string | undefined>(
     undefined
   );
   const [showAppOptions, setShowAppOptions] = useState<boolean>(false);
+  const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
+  const [pickedEmoji, setPickedEmoji] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (!permissionResponse?.granted) {
+      requestPermissionResponse();
+    }
+  }, []);
 
   const pickImageAsync = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
@@ -31,13 +47,37 @@ export default function Index() {
   const onReset = () => {
     setShowAppOptions(false);
   };
-  const onAddSticker = () => {};
-  const onSaveImageAsync = async () => {};
+  const onModalClose = () => {
+    setIsModalVisible(false);
+  };
+  const onAddSticker = () => {
+    setIsModalVisible(true);
+  };
+
+  const onSaveImageAsync = async () => {
+    try {
+      const localUri = await captureRef(imageRef, {
+        height: 440,
+        quality: 1,
+      });
+
+      await MediaLibrary.saveToLibraryAsync(localUri);
+      if (localUri) {
+        alert("Saved!");
+      }
+      return localUri;
+    } catch (e) {
+      console.log(e);
+    }
+  };
 
   return (
     <View style={styles.container}>
-      <View style={styles.imageContainer}>
+      <View ref={imageRef} style={styles.imageContainer} collapsable={false}>
         <ImageViewer imgSource={selectedImage || PlaceholderImage} />
+        {pickedEmoji && (
+          <EmojiSticker imageSize={40} stickerSource={pickedEmoji} />
+        )}
       </View>
 
       {showAppOptions ? (
@@ -65,6 +105,9 @@ export default function Index() {
           />
         </View>
       )}
+      <EmojiPicker onClose={onModalClose} isVisible={isModalVisible}>
+        <EmojiList onCloseModal={onModalClose} onSelect={setPickedEmoji} />
+      </EmojiPicker>
     </View>
   );
 }
